@@ -1,10 +1,14 @@
 #!/usr/bin/env python
+import os
 
+from dotenv import load_dotenv
 import numpy as np
 import openmc
+import openmc.lib
 
-from properties import model
-from properties import _HEIGHT, _PITCH
+load_dotenv()
+
+from properties import model, _HEIGHT, _PITCH
 
 def create_csg_model(materials):
 
@@ -83,3 +87,29 @@ def test_cylindrical_mesh():
     model.geometry = create_csg_model(model.materials)
     model.tallies = create_tallies(model)
     model.export_to_xml()
+    sp_name = model.run(openmc_exec=os.getenv('OPENMC_EXEC', 'openmc'))
+    sp = openmc.StatePoint(sp_name)
+
+    mesh_tally = None
+    cell_tally = None
+
+    for t in sp.tallies.values():
+        for f in t.filters:
+            if isinstance(f, openmc.MeshFilter):
+                mesh_tally = t
+            if isinstance(f, openmc.CellFilter):
+                cell_tally = t
+
+    print(mesh_tally)
+    print(mesh_tally.num_bins)
+    print(mesh_tally.mean)
+    print(np.sum(mesh_tally.mean))
+    print(cell_tally)
+    print(cell_tally.num_bins)
+    print(cell_tally.mean)
+    print(np.sum(cell_tally.mean))
+
+    # propagate error of std dev of both tallies
+    std_dev = np.sqrt(mesh_tally.std_dev**2 + cell_tally.std_dev**2)
+
+    np.allclose(mesh_tally.mean, cell_tally.mean, std_dev)
