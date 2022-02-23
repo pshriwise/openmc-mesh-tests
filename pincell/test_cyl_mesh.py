@@ -4,11 +4,12 @@ import os
 from dotenv import load_dotenv
 import numpy as np
 import openmc
-import openmc.lib
+
+from util import run_in_tmpdir
 
 load_dotenv()
 
-from properties import model, _HEIGHT, _PITCH
+from pincell.properties import model, _HEIGHT, _PITCH
 
 def create_csg_model(materials):
 
@@ -82,7 +83,7 @@ def create_tallies(model):
 def cells_by_material(geom, material):
     return [c for c in geom.get_all_cells().values() if c.fill == material]
 
-
+@run_in_tmpdir
 def test_cylindrical_mesh():
     model.geometry = create_csg_model(model.materials)
     model.tallies = create_tallies(model)
@@ -99,15 +100,6 @@ def test_cylindrical_mesh():
                 mesh_tally = t
             if isinstance(f, openmc.CellFilter):
                 cell_tally = t
-
-    print(mesh_tally)
-    print(mesh_tally.num_bins)
-    print(mesh_tally.mean)
-    print(np.sum(mesh_tally.mean))
-    print(cell_tally)
-    print(cell_tally.num_bins)
-    print(cell_tally.mean)
-    print(np.sum(cell_tally.mean))
 
     # propagate error of std dev of both tallies
     std_dev = np.sqrt(mesh_tally.std_dev**2 + cell_tally.std_dev**2)
