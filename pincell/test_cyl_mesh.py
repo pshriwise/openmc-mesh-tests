@@ -55,9 +55,7 @@ def create_csg_model(materials):
 
     return geom
 
-
-def create_tallies(cells):
-
+def create_tallies(model):
     # create a cylindrical mesh that matches the
     mesh = openmc.CylindricalMesh()
     mesh.r_grid = np.linspace(0.0, 1.0, 3)
@@ -68,12 +66,13 @@ def create_tallies(cells):
     mesh_tally.filters = [openmc.MeshFilter(mesh)]
     mesh_tally.scores = ['flux']
 
+    fuel_cells = cells_by_material(model.geometry, model.materials[0])
     cell_tally = openmc.Tally()
-    cell_ids = [c.id for c in cells]
+    cell_ids = [c.id for c in fuel_cells]
     cell_tally.filters = [openmc.CellFilter(cell_ids)]
     cell_tally.scores = ['flux']
 
-    openmc.Tallies([mesh_tally, cell_tally]).export_to_xml()
+    return openmc.Tallies([mesh_tally, cell_tally])
 
 
 def cells_by_material(geom, material):
@@ -82,5 +81,5 @@ def cells_by_material(geom, material):
 
 def test_cylindrical_mesh():
     model.geometry = create_csg_model(model.materials)
-    fuel_cells = cells_by_material(model.geometry, model.materials[0])
-    create_tallies(fuel_cells)
+    model.tallies = create_tallies(model)
+    model.export_to_xml()
