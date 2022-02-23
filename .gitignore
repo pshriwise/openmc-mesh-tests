@@ -2,3 +2,5 @@
 *~
 *.xml
 .env
+.vscode
+__pycache__
