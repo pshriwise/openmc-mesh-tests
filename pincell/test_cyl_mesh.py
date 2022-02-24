@@ -11,6 +11,7 @@ load_dotenv()
 
 import pytest
 
+from pincell import config
 from pincell.properties import model, _HEIGHT, _PITCH
 
 def create_csg_model(materials):
@@ -86,7 +87,7 @@ def cells_by_material(geom, material):
     return [c for c in geom.get_all_cells().values() if c.fill == material]
 
 @pytest.mark.parametrize("particles",
-                         [1000, 10000, 100000],
+                         [1000, 10000],
                          ids=lambda x: f'particles={x}')
 @run_in_tmpdir
 def test_cylindrical_mesh(particles):
@@ -94,7 +95,10 @@ def test_cylindrical_mesh(particles):
     model.tallies = create_tallies(model)
     model.settings.particles = particles
     model.export_to_xml()
-    sp_name = model.run(openmc_exec=os.getenv('OPENMC_EXEC', 'openmc'))
+    if config.get('build_inputs'):
+        return
+
+    sp_name = model.run(openmc_exec=config.get('exe'))
     sp = openmc.StatePoint(sp_name)
 
     mesh_tally = None
