@@ -9,6 +9,8 @@ from util import run_in_tmpdir
 
 load_dotenv()
 
+import pytest
+
 from pincell.properties import model, _HEIGHT, _PITCH
 
 def create_csg_model(materials):
@@ -83,10 +85,14 @@ def create_tallies(model):
 def cells_by_material(geom, material):
     return [c for c in geom.get_all_cells().values() if c.fill == material]
 
+@pytest.mark.parametrize("particles",
+                         [1000, 10000, 100000],
+                         ids=lambda x: f'particles={x}')
 @run_in_tmpdir
-def test_cylindrical_mesh():
+def test_cylindrical_mesh(particles):
     model.geometry = create_csg_model(model.materials)
     model.tallies = create_tallies(model)
+    model.settings.particles = particles
     model.export_to_xml()
     sp_name = model.run(openmc_exec=os.getenv('OPENMC_EXEC', 'openmc'))
     sp = openmc.StatePoint(sp_name)
@@ -103,5 +109,14 @@ def test_cylindrical_mesh():
 
     # propagate error of std dev of both tallies
     std_dev = np.sqrt(mesh_tally.std_dev**2 + cell_tally.std_dev**2)
-
     np.allclose(mesh_tally.mean, cell_tally.mean, std_dev)
+
+    diff = mesh_tally.mean - cell_tally.mean
+    abs_diff = np.abs(diff)
+    abs_rel_diff = abs_diff / cell_tally.mean
+
+    print(f'Mesh tally max std. dev.: {np.max(mesh_tally.std_dev)}')
+    print(f'Cell tally max std. dev.: {np.max(cell_tally.std_dev)}')
+    print(f'Min abs. rel. diff: {np.min(abs_rel_diff)}')
+    print(f'Max abs. rel. diff.: {np.max(abs_rel_diff)}')
+    print(f'Avg. abs. rel. diff.: {np.mean(abs_rel_diff)}')
